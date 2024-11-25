@@ -1,12 +1,26 @@
+# -*- coding: utf-8 -*-
+
+"""
+Copyright (C) November 2024 Blueline, Alain Nambinintsoa RAKOTOARIVELO
+Licensed under LGPLv3.
+"""
+
 import json
 import logging
 from zato.server.service import Service
 import redis
 import requests
 from requests.auth import HTTPBasicAuth
+from six.moves.configparser import ConfigParser
+
+# Load Configurations
+CONFIG = ConfigParser()
+CONFIG.read("/etc/auth_partner/auth_partner.conf")
 
 # Redis Configuration
-REDIS_TOKEN_DB = redis.Redis(db=4)
+# db=4 by default
+CONFIG_REDIS_DB = int(CONFIG.get('REDIS', 'AUTH_PARTNER_REDIS_DB', fallback=4))
+REDIS_TOKEN_DB = redis.Redis(db=CONFIG_REDIS_DB)
 
 # Authentication credentials
 USERNAME = 'zato'
