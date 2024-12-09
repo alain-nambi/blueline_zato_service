@@ -172,7 +172,7 @@ class BluelineUSSDClientAuth(Service):
             self.response.status_code = 500
             return
 
-        logging.info(f"USSD FINAL RESPONSE : {ussd_response}")
+        # logging.info(f"USSD FINAL RESPONSE : {ussd_response}")
 
         # Extract ret_code and ensure it's an integer
         ret_code = ussd_response.get('ret_code', 500)

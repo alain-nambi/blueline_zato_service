@@ -1,0 +1,131 @@
+import json
+import logging
+from zato.server.service import Service
+from six.moves.configparser import ConfigParser
+import xmltodict
+
+CONFIG = ConfigParser()
+CONFIG.read("/etc/auth_partner/auth_partner.conf")
+
+BLUELINE_BLUEBASE_AUTH_USSD = 'blueline.bluebase.auth.ussd'
+
+
+class BluelineBluebaseAuthUSSD(Service):
+    """
+    Service class for handling USSD authentication via SOAP API.
+    """
+    name = BLUELINE_BLUEBASE_AUTH_USSD
+
+    class SimpleIO:
+        input_required = ("operator", "caller_num", "service_type", "login_type", "login")
+        default_value = 'UNKNOWN'
+
+    def handle_GET(self):
+        # Extract authentication data from incoming request
+        token = self.request.input.get('token')
+        operator = self.request.input.operator
+        caller_num = self.request.input.caller_num
+        service_type = self.request.input.service_type
+        login_type = self.request.input.login_type
+        login = self.request.input.login
+
+        # Prepare payload for SOAP request
+        auth_payload = {
+            "root": {
+                "header": {
+                    "version": "1",
+                    "param1": "auth_ussd",
+                    "ident": CONFIG['BLUEBASE']['ident'],
+                    "psw": CONFIG['BLUEBASE']['pswd'],
+                },
+                "data": {
+                    'operator': operator,
+                    'caller_num': caller_num,
+                    'service_type': service_type,
+                    'type_auth': login_type,
+                    'login_auth': str(login).replace(" ", "")[-9:],  # Clean login
+                },
+            }
+        }
+
+        # Log the payload before sending it
+        logging.info(f"Payload sent for 'auth_ussd': {auth_payload}")
+
+        try:
+            # Send SOAP request and receive the response
+            with self.outgoing.soap.get("BluelineBluebaseS4DService").conn.client() as client:
+                data_xml = xmltodict.unparse(auth_payload)
+                logging.info(f"Payload XML sent: {data_xml}")
+
+                # Call the SOAP service
+                response = client.service.S4D(data_xml)
+                logging.info(f"Response received: {response}")
+
+                # Process the response and convert it to JSON
+                response_json = self.convert_xml_to_json(response)
+
+                if response_json:
+                    # Extract relevant data
+                    response_payload = self.construct_response_payload(response_json, operator, caller_num)
+                    logging.info(f"Response payload: {response_payload}")
+                else:
+                    logging.error("Failed to convert response to JSON.")
+
+        except Exception as e:
+            # Log and handle errors
+            logging.error(f"Error during SOAP request or response processing: {e}")
+            self.send_error_email(e)
+
+    def convert_xml_to_json(self, response):
+        """
+        Convert XML response to JSON format.
+        """
+        try:
+            # Convert the XML response to a dictionary
+            response_dict = xmltodict.parse(response)
+
+            # Convert dictionary to JSON for easier inspection
+            response_json = json.dumps(response_dict, indent=4)
+            logging.info(f"Response in JSON: {response_json}")
+
+            return response_dict
+
+        except Exception as e:
+            logging.error(f"Error during XML to JSON conversion: {e}")
+            return None
+
+    def construct_response_payload(self, response_json, operator, caller_num):
+        """
+        Construct the response payload from the parsed JSON data.
+        """
+        response_data = response_json.get("root", {}).get("data", {})
+
+        return {
+            "status": 200,
+            "data": {
+                "customer_id": response_data.get("client_refnum"),
+                "caller_num": caller_num,
+                "operator": operator,
+                "name": response_data.get("client_nom"),
+                "last_name": response_data.get("client_prenom"),
+                "num_is_mine": response_data.get("num_is_mine"),
+                # Optionally include the first device_id from the list if needed
+                # "device_name": response_data.get("device_id")[0]
+            },
+        }
+
+    def send_error_email(self, error):
+        """
+        Send an error email notification in case of failure.
+        """
+        self.invoke(
+            "blueline.send.email",
+            {
+                'mail_to': "dev@si.blueline.mg",
+                'mail_from': "zato3dev@si.blueline.mg",
+                'mail_text': f"Error during SOAP request or response processing: {error}",
+                'title': "[BluelineUssdGetClientInvoice] USSD Authentication | Error",
+            },
+            as_bunch=True,
+        )
+        logging.info("Error report sent by email to dev@si.blueline.mg")
