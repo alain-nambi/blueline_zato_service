@@ -1,3 +1,10 @@
+"""
+Service class for handling USSD authentication via SOAP API.
+@Author: Alain Nambinintsoa RAKOTOARIVELO
+License: LGPLv3
+Last Update: 2025-01-21
+"""
+
 import json
 import logging
 from zato.server.service import Service
@@ -203,7 +210,7 @@ class BluelineBluebaseAuthUSSD(Service):
                 "data": {
                     "caller_num": caller_num,
                     "customer_id": bluebase_data.get("client_refnum"),
-                    "device_name": device_name or list({device for device in device_ids if device is not None}) if device_ids else None,
+                    "device_name": device_name or (list({device for device in device_ids if device is not None}) if device_ids else login) or None,
                     "last_name": bluebase_data.get("client_prenom") or "-",
                     "name": bluebase_data.get("client_nom") or "-",
                     "num_is_mine": bluebase_data.get("num_is_mine"),
@@ -237,7 +244,7 @@ class BluelineBluebaseAuthUSSD(Service):
                 )["offre"]
 
                 unique_durations = extract_unique_durations(offers=offers_ussd_get_recharge)
-                day_list_str = ", ".join(map(str, unique_durations))
+                day_list_str = ",".join(map(str, unique_durations))
 
                 # logging.info(f'day_list_str : {day_list_str} {type(day_list_str)}')
 
@@ -281,7 +288,9 @@ class BluelineBluebaseAuthUSSD(Service):
                             result["data"]["jour"] = CONFIG_DATA["MISC"].get(p_code, day_list_str)
                     
                     else:
-                        # Handle case if operator is Airtel
+                        #####################################
+                        # Handle case if operator is Airtel #
+                        #####################################
                         devices = device_ids[:3] if operator == "airtel" else device_ids
                         for device in devices:
                             my_device_idx = device_ids.index(device)
@@ -300,7 +309,12 @@ class BluelineBluebaseAuthUSSD(Service):
                                 p_code = f"pcode_{device_pcode}"
                                 days[device] = CONFIG_DATA["MISC"].get(p_code, day_list_str)
                                 result["data"]["jour"] = days
+                                
+                                # Remove duplicates and set the device names from the product codes
+                                result["data"]["device_name"] = list(set(product_code.keys()))
+                            
                             result["data"]["product_code"] = product_code
+                            
             self.response.payload = result
             return result
 
@@ -313,6 +327,7 @@ class BluelineBluebaseAuthUSSD(Service):
         Extract the device name from the response data.
         """
         device_ids = response_data.get("device_id", [])
+        
         if isinstance(device_ids, list) and device_ids:
             try:
                 return device_ids[device_ids.index(login)]
