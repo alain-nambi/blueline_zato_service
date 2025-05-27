@@ -80,11 +80,11 @@ class BluelineBluebaseAuthUSSD(Service):
         login_type = self.request.input.login_type
         login = self.request.input.login
 
-        token = self.request.payload['token']
-        logging.info(f'[Blueline Bluebase Auth USSD] [Token Received] {token}')
+        # token = self.request.payload['token']
+        # logging.info(f'[Blueline Bluebase Auth USSD] [Token Received] {token}')
 
-        if not token:
-            return self._unauthorized_response(message='Unauthorized : Token not found')
+        # if not token:
+        #     return self._unauthorized_response(message='Unauthorized : Token not found')
 
         # Construct authentication payload
         auth_payload = self._create_auth_payload(
