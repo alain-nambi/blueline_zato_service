@@ -20,7 +20,7 @@ def get_transaction():
     transactions = client.read(
         "blueline.account.prepaid.move",
         [
-            ("transaction_date", ">=", '2025-02-01'),
+            ("transaction_date", ">=", '2025-06-12'),
             ("operation_type", "=", "credit"),
             ("transaction_type", "=", "Achat"),
         ],

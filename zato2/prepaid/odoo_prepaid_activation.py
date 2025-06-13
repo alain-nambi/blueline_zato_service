@@ -10,11 +10,6 @@ password = "cem@root"
 # Initialize the client
 client = Client(server=url, db=database, user=user, password=password)
 
-date = {
-    'before': '2025-02-13',
-    'after': '2025-02-12'
-}
-
 def get_transaction():
     # Fetch transactions with specific fields
     transactions = client.read(
@@ -208,7 +203,7 @@ def get_accounts(operator, product):
 transaction_raw = get_transaction()
 transactions = prepare_transactions(transaction_raw)
 
-print(f"Number of processed transactions: {len(transactions)}")
+print(f"Number of processed transactions: {len(transactions)}\n")
 
 # for transaction in transactions:
     # print(transaction)
@@ -217,7 +212,7 @@ print(f"Number of processed transactions: {len(transactions)}")
 
 totals = set_totals(transactions)
 
-print("Transaction totals:")
+print(f"Transaction totals: {len(transactions)}")
 for couple, total in totals.items():
     product = couple[0]
     operator = couple[1]
