@@ -1,3 +1,4 @@
+from math import prod
 from erppeek import Client
 import logging
 
@@ -15,7 +16,8 @@ def get_transaction():
     transactions = client.read(
         "blueline.account.prepaid.move",
         [
-            ("transaction_date", ">=", '2025-06-12'),
+            ("transaction_date", ">=", '2025-06-01'),
+            ("transaction_date", "<", '2025-06-02'),
             ("operation_type", "=", "credit"),
             ("transaction_type", "=", "Activation"),
         ],
@@ -58,17 +60,17 @@ def prepare_transactions(transactions):
     ]
 
     mvola_channels = [
-        "mvola"
+        # "mvola"
     ]
 
     airtel_channels = [
-        # "airtelmoney"
+        "airtelmoney"
     ]
 
     channels = izytv_channels + tv_internet_channels + acces_banque_channels + mvola_channels + airtel_channels
 
     for transaction in transactions:
-        print(transaction)
+        print(transaction["product_type"])
         
         if not transaction["product_type"]:
             continue  # Skip transactions without a product type
@@ -76,7 +78,8 @@ def prepare_transactions(transactions):
         if transaction["product_type"].lower() in ["4g", "3g"]:
             transaction["product_type"] = "internet"
         else:
-            transaction["product_type"] = transaction["product_type"].lower()
+            transaction["product_type"] = transaction["product_type"].strip().lower()
+
 
         if transaction["channel"] in channels:
             prepared_transactions.append(transaction)
@@ -99,8 +102,8 @@ def set_totals(transactions):
         """
         totals = {}
         for transaction in transactions:
-            product = transaction["product_type"].lower()
-            channel = transaction["channel"].lower()
+            product = transaction["product_type"].strip().lower()
+            channel = transaction["channel"].strip().lower()
             amount = transaction["amount"]
             if (product, channel) not in totals:
                 totals.update({(product, channel): amount})
@@ -182,6 +185,8 @@ def get_accounts(operator, product):
             "code journal": "AIRT",
             "compte général": "5300043",
             "compte tiers": {
+                "carte airtel x": "C0000469117",
+                "carte airtel": "C0000469117",
                 "izytv": "C0000469117",
                 "internet": "C0000469117",
             },
@@ -189,14 +194,16 @@ def get_accounts(operator, product):
     }
     keywords = ACCOUNTS.keys()
     for keyword in keywords:
-        if keyword in operator:
+        if keyword.lower() == operator.lower():
             operator = keyword
+
     accounts = {
         "operator": operator,
         "code journal": ACCOUNTS[operator]["code journal"],
         "compte général": ACCOUNTS[operator]["compte général"],
         "compte tiers": ACCOUNTS[operator]["compte tiers"][product],
     }
+
     return accounts
 
 # Main execution
