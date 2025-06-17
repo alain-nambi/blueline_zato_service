@@ -224,7 +224,7 @@ class BluelineSageAccountPrepaid(Service):
         ]
 
         mvola_channels = [
-            "mvola"
+            # "mvola"
         ]
 
         airtel_channels = [
