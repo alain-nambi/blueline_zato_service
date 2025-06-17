@@ -502,7 +502,7 @@ class BluelineSageAccountPrepaid(Service):
                 "compte tiers": {
                     "izytv": "C0000406350",
                     "tv": "C0000175293",
-                    "internet": "C0000467939",
+                    # "internet": "C0000467939",
                 },
             },
             "airtelmoney": {
